@@ -36,14 +36,17 @@
 
 #define _GNU_SOURCE /* for RTLD_NEXT */
 #include <dlfcn.h>
+#include <arpa/inet.h>
 #ifndef NO_OPENSSL_102_SUPPORT
 #   include <openssl/ssl.h>
 #endif /* ! NO_OPENSSL_102_SUPPORT */
+#include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/socket.h>
 
 #ifndef OPENSSL_SONAME
 /* fallback library if OpenSSL is not already loaded. */
@@ -350,6 +353,86 @@ static void keylog_callback(const SSL *ssl, const char *line)
 {
     init_keylog_file();
     if (keylog_file_fd >= 0) {
+        int peer_fd = SSL_get_fd(ssl);
+        if (peer_fd >= 0) {
+            struct sockaddr addr;
+            socklen_t addr_len = sizeof(addr);
+            if (getpeername(peer_fd, &addr, &addr_len) == 0) {
+                const char* addr_name = NULL;
+                char buffer[INET6_ADDRSTRLEN];
+                switch (addr.sa_family)
+                {
+                    case AF_INET:
+                        addr_name = inet_ntop(AF_INET, &((struct sockaddr_in*)&addr)->sin_addr, buffer, sizeof(buffer));
+                        break;
+            
+                    case AF_INET6:
+                        addr_name = inet_ntop(AF_INET6, &((struct sockaddr_in6*)&addr)->sin6_addr, buffer, sizeof(buffer));
+                        break;
+            
+                    default:
+                        break;
+                }
+
+                if (addr_name != NULL) {
+                    write(keylog_file_fd, addr_name, strlen(addr_name));
+                } else {
+                    fprintf(stderr, "sslkeylog: failed to get peer address for fd %d, errno: %d\n", peer_fd, errno);
+                    write(keylog_file_fd, "?", 1);
+                }
+            } else {
+                fprintf(stderr, "sslkeylog: failed to get peer name for fd %d, errno: %d\n", peer_fd, errno);
+                write(keylog_file_fd, "?", 1);
+            }
+    
+            write(keylog_file_fd, " ", 1);
+
+            addr_len = sizeof(addr);
+            if (getsockname(peer_fd, &addr, &addr_len) == 0) {
+                const char* addr_name = NULL;
+                char buffer[INET6_ADDRSTRLEN];
+                switch (addr.sa_family)
+                {
+                    case AF_INET:
+                        addr_name = inet_ntop(AF_INET, &((struct sockaddr_in*)&addr)->sin_addr, buffer, sizeof(buffer));
+                        break;
+            
+                    case AF_INET6:
+                        addr_name = inet_ntop(AF_INET6, &((struct sockaddr_in6*)&addr)->sin6_addr, buffer, sizeof(buffer));
+                        break;
+            
+                    default:
+                        break;
+                }
+
+                if (addr_name != NULL) {
+                    write(keylog_file_fd, addr_name, strlen(addr_name));
+                }
+                else {
+                    fprintf(stderr, "sslkeylog: failed to get socket address for fd %d, errno: %d\n", peer_fd, errno);
+                    write(keylog_file_fd, "?", 1);
+                }
+            }
+            else {
+                fprintf(stderr, "sslkeylog: failed to get socket name for fd %d, errno: %d\n", peer_fd, errno);
+                write(keylog_file_fd, "?", 1);
+            }
+        } else {
+            fprintf(stderr, "sslkeylog: failed to get fd for SSL, errno: %d\n", errno);
+            write(keylog_file_fd, "? ?", 1);
+        }
+    
+        write(keylog_file_fd, " ", 1);
+
+        const char* client_name = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+        if (client_name != NULL) {
+            write(keylog_file_fd, client_name, strlen(client_name));
+        } else {
+            fprintf(stderr, "sslkeylog: failed to get client name for SSL, errno: %d\n", errno);
+            write(keylog_file_fd, "?", 1);
+        }
+
+        write(keylog_file_fd, " ", 1);
         write(keylog_file_fd, line, strlen(line));
         write(keylog_file_fd, "\n", 1);
     }
