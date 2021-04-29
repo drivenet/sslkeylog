@@ -128,9 +128,6 @@ static void keylog_callback(const SSL *ssl, const char *line)
         const char* client_name = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
         if (client_name) {
             write(keylog_file_fd, client_name, strlen(client_name));
-        } else {
-            fprintf(stderr, "sslkeylog: Failed to get client name for SSL, errno: %d\n", errno);
-            write(keylog_file_fd, "?", 1);
         }
 
         write(keylog_file_fd, " ", 1);
