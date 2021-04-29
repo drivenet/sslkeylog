@@ -78,11 +78,11 @@ static void keylog_callback(const SSL *ssl, const char *line)
                 if (addr_name != NULL) {
                     write(keylog_file_fd, addr_name, strlen(addr_name));
                 } else {
-                    fprintf(stderr, "sslkeylog: failed to get peer address for fd %d, errno: %d\n", peer_fd, errno);
+                    fprintf(stderr, "sslkeylog: Failed to get peer address for fd %d, errno: %d\n", peer_fd, errno);
                     write(keylog_file_fd, "?", 1);
                 }
             } else {
-                fprintf(stderr, "sslkeylog: failed to get peer name for fd %d, errno: %d\n", peer_fd, errno);
+                fprintf(stderr, "sslkeylog: Failed to get peer name for fd %d, errno: %d\n", peer_fd, errno);
                 write(keylog_file_fd, "?", 1);
             }
     
@@ -110,16 +110,16 @@ static void keylog_callback(const SSL *ssl, const char *line)
                     write(keylog_file_fd, addr_name, strlen(addr_name));
                 }
                 else {
-                    fprintf(stderr, "sslkeylog: failed to get socket address for fd %d, errno: %d\n", peer_fd, errno);
+                    fprintf(stderr, "sslkeylog: Failed to get socket address for fd %d, errno: %d\n", peer_fd, errno);
                     write(keylog_file_fd, "?", 1);
                 }
             }
             else {
-                fprintf(stderr, "sslkeylog: failed to get socket name for fd %d, errno: %d\n", peer_fd, errno);
+                fprintf(stderr, "sslkeylog: Failed to get socket name for fd %d, errno: %d\n", peer_fd, errno);
                 write(keylog_file_fd, "?", 1);
             }
         } else {
-            fprintf(stderr, "sslkeylog: failed to get fd for SSL, errno: %d\n", errno);
+            fprintf(stderr, "sslkeylog: Failed to get fd for SSL, errno: %d\n", errno);
             write(keylog_file_fd, "? ?", 1);
         }
     
@@ -129,7 +129,7 @@ static void keylog_callback(const SSL *ssl, const char *line)
         if (client_name != NULL) {
             write(keylog_file_fd, client_name, strlen(client_name));
         } else {
-            fprintf(stderr, "sslkeylog: failed to get client name for SSL, errno: %d\n", errno);
+            fprintf(stderr, "sslkeylog: Failed to get client name for SSL, errno: %d\n", errno);
             write(keylog_file_fd, "?", 1);
         }
 
@@ -145,7 +145,7 @@ SSL *SSL_new(SSL_CTX *ctx)
     if (!func) {        
         func = dlsym(RTLD_NEXT, __func__);
         if (!func) {
-            fprintf(stderr, "Cannot lookup %s\n", __func__);
+            fprintf(stderr, "sslkeylog: Cannot lookup %s\n", __func__);
             abort();
         }
     }
