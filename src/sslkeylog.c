@@ -60,15 +60,18 @@ static void keylog_callback(const SSL *ssl, const char *line)
             socklen_t addr_len = sizeof(addr);
             if (getpeername(peer_fd, &addr, &addr_len) == 0) {
                 const char* addr_name = NULL;
+                unsigned short port = 0;
                 char buffer[INET6_ADDRSTRLEN];
                 switch (addr.sa_family)
                 {
                     case AF_INET:
                         addr_name = inet_ntop(AF_INET, &((struct sockaddr_in*)&addr)->sin_addr, buffer, sizeof(buffer));
+                        port = ntohs(((struct sockaddr_in*)&addr)->sin_port);
                         break;
             
                     case AF_INET6:
                         addr_name = inet_ntop(AF_INET6, &((struct sockaddr_in6*)&addr)->sin6_addr, buffer, sizeof(buffer));
+                        port = ntohs(((struct sockaddr_in6*)&addr)->sin6_port);
                         break;
             
                     default:
@@ -81,6 +84,12 @@ static void keylog_callback(const SSL *ssl, const char *line)
                     fprintf(stderr, "sslkeylog: Failed to get peer address for fd %d, errno: %d\n", peer_fd, errno);
                     write(keylog_file_fd, "?", 1);
                 }
+
+                if (port != 0) {
+                    sprintf(buffer, "%hu", port);
+                    write(keylog_file_fd, ":", 1);
+                    write(keylog_file_fd, buffer, strlen(buffer));
+                }
             } else {
                 fprintf(stderr, "sslkeylog: Failed to get peer name for fd %d, errno: %d\n", peer_fd, errno);
                 write(keylog_file_fd, "?", 1);
@@ -91,15 +100,18 @@ static void keylog_callback(const SSL *ssl, const char *line)
             addr_len = sizeof(addr);
             if (getsockname(peer_fd, &addr, &addr_len) == 0) {
                 const char* addr_name = NULL;
+                unsigned short port = 0;
                 char buffer[INET6_ADDRSTRLEN];
                 switch (addr.sa_family)
                 {
                     case AF_INET:
                         addr_name = inet_ntop(AF_INET, &((struct sockaddr_in*)&addr)->sin_addr, buffer, sizeof(buffer));
+                        port = ntohs(((struct sockaddr_in*)&addr)->sin_port);
                         break;
             
                     case AF_INET6:
                         addr_name = inet_ntop(AF_INET6, &((struct sockaddr_in6*)&addr)->sin6_addr, buffer, sizeof(buffer));
+                        port = ntohs(((struct sockaddr_in6*)&addr)->sin6_port);
                         break;
             
                     default:
@@ -112,6 +124,12 @@ static void keylog_callback(const SSL *ssl, const char *line)
                 else {
                     fprintf(stderr, "sslkeylog: Failed to get socket address for fd %d, errno: %d\n", peer_fd, errno);
                     write(keylog_file_fd, "?", 1);
+                }
+
+                if (port != 0) {
+                    sprintf(buffer, "%hu", port);
+                    write(keylog_file_fd, ":", 1);
+                    write(keylog_file_fd, buffer, strlen(buffer));
                 }
             }
             else {
