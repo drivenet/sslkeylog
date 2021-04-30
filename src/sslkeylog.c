@@ -47,6 +47,40 @@ static void init_keylog_file(void)
     }
 }
 
+static void log_addr(const struct sockaddr* addr) {
+    const char* addr_name;
+    unsigned short port;
+    char buffer[INET6_ADDRSTRLEN];
+    switch (addr->sa_family)
+    {
+        case AF_INET:
+            addr_name = inet_ntop(AF_INET, &((struct sockaddr_in*)addr)->sin_addr, buffer, sizeof(buffer));
+            port = ntohs(((struct sockaddr_in*)&addr)->sin_port);
+            break;
+
+        case AF_INET6:
+            addr_name = inet_ntop(AF_INET6, &((struct sockaddr_in6*)addr)->sin6_addr, buffer, sizeof(buffer));
+            port = ntohs(((struct sockaddr_in6*)&addr)->sin6_port);
+            break;
+
+        default:
+            addr_name = NULL;
+            port = 0;
+            break;
+    }
+
+    if (addr_name) {
+        fputs(addr_name, keylog_file);
+    } else {
+        fprintf(stderr, "sslkeylog: Failed to convert address, AF: %hu, errno: %d\n", addr->sa_family, errno);
+        fputc('?', keylog_file);
+    }
+
+    if (port != 0) {
+        fprintf(keylog_file, ":%hu", port);
+    }
+}
+
 /* Key extraction via the new OpenSSL 1.1.1 API. */
 static void keylog_callback(const SSL *ssl, const char *line)
 {
@@ -60,35 +94,7 @@ static void keylog_callback(const SSL *ssl, const char *line)
         struct sockaddr addr;
         socklen_t addr_len = sizeof(addr);
         if (getpeername(peer_fd, &addr, &addr_len) == 0) {
-            const char* addr_name = NULL;
-            unsigned short port = 0;
-            char buffer[INET6_ADDRSTRLEN];
-            switch (addr.sa_family)
-            {
-                case AF_INET:
-                    addr_name = inet_ntop(AF_INET, &((struct sockaddr_in*)&addr)->sin_addr, buffer, sizeof(buffer));
-                    port = ntohs(((struct sockaddr_in*)&addr)->sin_port);
-                    break;
-        
-                case AF_INET6:
-                    addr_name = inet_ntop(AF_INET6, &((struct sockaddr_in6*)&addr)->sin6_addr, buffer, sizeof(buffer));
-                    port = ntohs(((struct sockaddr_in6*)&addr)->sin6_port);
-                    break;
-        
-                default:
-                    break;
-            }
-
-            if (addr_name) {
-                fputs(addr_name, keylog_file);
-            } else {
-                fprintf(stderr, "sslkeylog: Failed to get peer address for fd %d, errno: %d\n", peer_fd, errno);
-                fputc('?', keylog_file);
-            }
-
-            if (port != 0) {
-                fprintf(keylog_file, ":%hu", port);
-            }
+            log_addr(&addr);
         } else {
             fprintf(stderr, "sslkeylog: Failed to get peer name for fd %d, errno: %d\n", peer_fd, errno);
             fputc('?', keylog_file);
@@ -98,35 +104,7 @@ static void keylog_callback(const SSL *ssl, const char *line)
 
         addr_len = sizeof(addr);
         if (getsockname(peer_fd, &addr, &addr_len) == 0) {
-            const char* addr_name = NULL;
-            unsigned short port = 0;
-            char buffer[INET6_ADDRSTRLEN];
-            switch (addr.sa_family)
-            {
-                case AF_INET:
-                    addr_name = inet_ntop(AF_INET, &((struct sockaddr_in*)&addr)->sin_addr, buffer, sizeof(buffer));
-                    port = ntohs(((struct sockaddr_in*)&addr)->sin_port);
-                    break;
-        
-                case AF_INET6:
-                    addr_name = inet_ntop(AF_INET6, &((struct sockaddr_in6*)&addr)->sin6_addr, buffer, sizeof(buffer));
-                    port = ntohs(((struct sockaddr_in6*)&addr)->sin6_port);
-                    break;
-        
-                default:
-                    break;
-            }
-
-            if (addr_name) {
-                fputs(addr_name, keylog_file);
-            } else {
-                fprintf(stderr, "sslkeylog: Failed to get socket address for fd %d, errno: %d\n", peer_fd, errno);
-                fputc('?', keylog_file);
-            }
-
-            if (port != 0) {
-                fprintf(keylog_file, ":%hu", port);
-            }
+            log_addr(&addr);
         }
         else {
             fprintf(stderr, "sslkeylog: Failed to get socket name for fd %d, errno: %d\n", peer_fd, errno);
