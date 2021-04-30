@@ -1,9 +1,11 @@
 /*
  * Dumps master keys for OpenSSL clients to file. The format is documented at
- * https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS/Key_Log_Format
- * Supports TLS 1.3 when used with OpenSSL 1.1.1.
+ * https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS/Key_Log_Format,
+ * but contains some extensions like source/destination IP addresses, ports and
+ * SNI information. Requires OpenSSL 1.1.1.
  *
  * Copyright (C) 2014 Peter Wu <peter@lekensteyn.nl>
+ * Logging expanded and improved by Aristarkh Zagorodnikov <xm@drive.net>
  * Licensed under the terms of GPLv3 (or any later version) at your choice.
  *
  * Usage:
