@@ -29,6 +29,8 @@
 #include <stdio.h>
 #include <sys/socket.h>
 
+#define CLIENT_RANDOM "CLIENT_RANDOM "
+
 static FILE* keylog_file = NULL;
 
 static void init_keylog_file(void)
@@ -143,6 +145,10 @@ static void keylog_callback(const SSL *ssl, const char *line)
     }
 
     fputc(' ', keylog_file);
+    if (!strncmp(CLIENT_RANDOM, line, sizeof(CLIENT_RANDOM) - 1)) {
+        line += sizeof(CLIENT_RANDOM) - 1;
+    }
+
     fputs(line, keylog_file);
     fputc('\n', keylog_file);
 }
