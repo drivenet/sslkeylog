@@ -33,17 +33,53 @@
 #define CLIENT_RANDOM "CLIENT_RANDOM "
 
 static FILE* keylog_file = NULL;
+static const char* keylog_name = NULL;
 
-static void init_keylog_file(void)
+static void init_keylog_file(const struct tm* now)
 {
-    if (keylog_file)
-        return;
-
     const char *filename = getenv("SSLKEYLOGFILE");
     if (filename) {
+        if (strlen(filename) > PATH_MAX - 100) {
+            fputs("sslkeylog: The provided log file name is too long\n", stderr);
+            return;
+        }
+
+        char buffer[PATH_MAX];
+        snprintf(buffer,
+            sizeof(buffer),
+            "%s[%u-%04u%02u%02u%02u%02u]", 
+            filename,
+            getpid(),
+            1900 + now->tm_year, 
+            now->tm_mon + 1, 
+            now->tm_mday, 
+            now->tm_hour, 
+            now->tm_min);
+        filename = buffer;
+
+        if (keylog_file) {
+            if (!strcmp(keylog_name, filename)) {
+                return;
+            }
+            fclose(keylog_file);
+            keylog_file = NULL;
+            free((void*)keylog_name);
+            keylog_name = NULL;
+        }
+
         keylog_file = fopen(filename, "a");
         if (keylog_file >= 0) {
+            keylog_name = strdup(filename);
             setlinebuf(keylog_file);
+        }
+    } else {
+        if (keylog_file) {
+            fclose(keylog_file);
+            keylog_file = NULL;
+        }
+        if (keylog_name) {
+            free((void*)keylog_name);
+            keylog_name = NULL;
         }
     }
 }
@@ -89,7 +125,7 @@ static void keylog_callback(const SSL *ssl, const char *line)
     struct tm now;
     gmtime_r(&session_tme, &now);
 
-    init_keylog_file();
+    init_keylog_file(&now);
     if (!keylog_file) {
         return;
     }
