@@ -85,24 +85,23 @@ static void log_addr(const struct sockaddr* addr) {
 /* Key extraction via the new OpenSSL 1.1.1 API. */
 static void keylog_callback(const SSL *ssl, const char *line)
 {
+    long session_tme = SSL_get_time(SSL_get_session(ssl));
+    struct tm now;
+    gmtime_r(&session_tme, &now);
+
     init_keylog_file();
     if (!keylog_file) {
         return;
     }
 
-    struct timeval now_highres;
-    gettimeofday(&now_highres, NULL);
-    struct tm now;
-    gmtime_r(&now_highres.tv_sec, &now);
     fprintf(keylog_file, 
-        "%04u-%02u-%02uT%02u:%02u:%02u.%06luZ ", 
+        "%04u-%02u-%02uT%02u:%02u:%02uZ ", 
         1900 + now.tm_year, 
         now.tm_mon + 1, 
         now.tm_mday, 
         now.tm_hour, 
         now.tm_min, 
-        now.tm_sec, 
-        now_highres.tv_usec);
+        now.tm_sec);
 
     int peer_fd = SSL_get_fd(ssl);
     if (peer_fd >= 0) {
