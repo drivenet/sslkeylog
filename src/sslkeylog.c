@@ -28,6 +28,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 
 #define CLIENT_RANDOM "CLIENT_RANDOM "
 
@@ -88,6 +89,20 @@ static void keylog_callback(const SSL *ssl, const char *line)
     if (!keylog_file) {
         return;
     }
+
+    struct timeval now_highres;
+    gettimeofday(&now_highres, NULL);
+    struct tm now;
+    gmtime_r(&now_highres.tv_sec, &now);
+    fprintf(keylog_file, 
+        "%04u-%02u-%02uT%02u:%02u:%02u.%06luZ ", 
+        1900 + now.tm_year, 
+        now.tm_mon + 1, 
+        now.tm_mday, 
+        now.tm_hour, 
+        now.tm_min, 
+        now.tm_sec, 
+        now_highres.tv_usec);
 
     int peer_fd = SSL_get_fd(ssl);
     if (peer_fd >= 0) {
