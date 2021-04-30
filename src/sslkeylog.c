@@ -55,12 +55,12 @@ static void log_addr(const struct sockaddr* addr) {
     {
         case AF_INET:
             addr_name = inet_ntop(AF_INET, &((struct sockaddr_in*)addr)->sin_addr, buffer, sizeof(buffer));
-            port = ntohs(((struct sockaddr_in*)&addr)->sin_port);
+            port = ntohs(((struct sockaddr_in*)addr)->sin_port);
             break;
 
         case AF_INET6:
             addr_name = inet_ntop(AF_INET6, &((struct sockaddr_in6*)addr)->sin6_addr, buffer, sizeof(buffer));
-            port = ntohs(((struct sockaddr_in6*)&addr)->sin6_port);
+            port = ntohs(((struct sockaddr_in6*)addr)->sin6_port);
             break;
 
         default:
