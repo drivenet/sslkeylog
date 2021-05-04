@@ -123,9 +123,9 @@ static void log_addr(const struct sockaddr* addr) {
 /* Key extraction via the new OpenSSL 1.1.1 API. */
 static void keylog_callback(const SSL *ssl, const char *line)
 {
-    long session_tme = SSL_get_time(SSL_get_session(ssl));
+    time_t now_time = time(NULL);
     struct tm now;
-    gmtime_r(&session_tme, &now);
+    gmtime_r(&now_time, &now);
 
     init_keylog_file(&now);
     if (!keylog_file) {
