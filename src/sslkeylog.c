@@ -198,3 +198,18 @@ SSL *SSL_new(SSL_CTX *ctx)
     SSL_CTX_set_keylog_callback(ctx, keylog_callback);
     return func(ctx);
 }
+
+SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX* ctx)
+{
+    static SSL_CTX *(*func)();
+    if (!func) {        
+        func = dlsym(RTLD_NEXT, __func__);
+        if (!func) {
+            fprintf(stderr, "sslkeylog: Cannot lookup %s\n", __func__);
+            abort();
+        }
+    }
+    /* Override any previous key log callback. */
+    SSL_CTX_set_keylog_callback(ctx, keylog_callback);
+    return func(ssl, ctx);
+}
