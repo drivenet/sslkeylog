@@ -12,6 +12,9 @@
  *  cc sslkeylog.c -shared -o libsslkeylog.so -fPIC -ldl
  *  SSLKEYLOGFILE=premaster.txt LD_PRELOAD=./libsslkeylog.so openssl ...
  *
+ * Also SSLKEYLOGISSERVER can be set to 0 or 1 to filter client only or 
+ * server-only contexts.
+ *
  * Usage for macOS:
  *  cc sslkeylog.c -shared -o libsslkeylog.dylib -fPIC -ldl \
  *      -I/usr/local/opt/openssl@1.1/include \
@@ -123,6 +126,19 @@ static void log_addr(const struct sockaddr* addr) {
 /* Key extraction via the new OpenSSL 1.1.1 API. */
 static void keylog_callback(const SSL *ssl, const char *line)
 {
+    const char* is_server = getenv("SSLKEYLOGISSERVER");
+    if (is_server) {        
+        if (!strcmp(is_server, "1")) {
+            if (!SSL_is_server(ssl)) {
+                return;
+            }
+        } else {
+            if (SSL_is_server(ssl)) {
+                return;
+            }
+        }
+    }
+
     time_t now_time = time(NULL);
     struct tm now;
     gmtime_r(&now_time, &now);
