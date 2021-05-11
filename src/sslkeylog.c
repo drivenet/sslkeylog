@@ -73,9 +73,11 @@ static void init_keylog_file(const struct tm* now)
         }
 
         keylog_file = fopen(filename, "a");
-        if (keylog_file >= 0) {
+        if (keylog_file) {
             keylog_name = strdup(filename);
             setlinebuf(keylog_file);
+        } else {
+            fprintf(stderr, "sslkeylog: Failed to open file %s, errno: %d\n", filename, errno);
         }
     } else {
         if (keylog_file) {
