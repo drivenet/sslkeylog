@@ -33,6 +33,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 
 #define CLIENT_RANDOM "CLIENT_RANDOM "
@@ -75,6 +76,9 @@ static void init_keylog_file(const struct tm* now)
         keylog_file = fopen(filename, "a");
         if (keylog_file) {
             keylog_name = strdup(filename);
+            if (chmod(filename, S_IRUSR | S_IWUSR | S_IRGRP)) {
+                fprintf(stderr, "sslkeylog: Failed to set permissions for file %s, errno: %d\n", filename, errno);
+            }
             setlinebuf(keylog_file);
         } else {
             fprintf(stderr, "sslkeylog: Failed to open file %s, errno: %d\n", filename, errno);
