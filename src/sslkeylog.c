@@ -95,7 +95,8 @@ static void init_keylog_file(const struct tm* now)
     }
 }
 
-static void log_addr(const struct sockaddr* addr) {
+static void log_addr(const struct sockaddr* addr)
+{
     const char* addr_name;
     unsigned short port;
     char buffer[INET6_ADDRSTRLEN];
