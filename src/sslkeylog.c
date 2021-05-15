@@ -130,6 +130,18 @@ static void log_addr(const struct sockaddr* addr)
     }
 }
 
+static void log_timestamp(const struct tm* now)
+{
+    fprintf(keylog_file, 
+        "%04u-%02u-%02uT%02u:%02u:%02uZ ", 
+        1900 + now->tm_year, 
+        now->tm_mon + 1, 
+        now->tm_mday, 
+        now->tm_hour, 
+        now->tm_min, 
+        now->tm_sec);
+}
+
 /* Key extraction via the new OpenSSL 1.1.1 API. */
 static void keylog_callback(const SSL *ssl, const char *line)
 {
@@ -156,44 +168,46 @@ static void keylog_callback(const SSL *ssl, const char *line)
         return;
     }
 
-    fprintf(keylog_file, 
-        "%04u-%02u-%02uT%02u:%02u:%02uZ ", 
-        1900 + now.tm_year, 
-        now.tm_mon + 1, 
-        now.tm_mday, 
-        now.tm_hour, 
-        now.tm_min, 
-        now.tm_sec);
-
     int peer_fd = SSL_get_fd(ssl);
     if (peer_fd >= 0) {
-        struct sockaddr addr;
-        socklen_t addr_len = sizeof(addr);
-        if (getpeername(peer_fd, &addr, &addr_len) == 0) {
-            log_addr(&addr);
-        } else if (is_server && errno == ENOTCONN) {
+        struct sockaddr peer_addr_buffer;
+        socklen_t addr_len = sizeof(peer_addr_buffer);
+        const struct sockaddr* peer_addr = 
+            getpeername(peer_fd, &peer_addr_buffer, &addr_len) ? NULL : &peer_addr_buffer;
+        if (!peer_addr && is_server && errno == ENOTCONN) {
             // There is no need to log anything if connection from client is broken
             return;
+        }
+
+        struct sockaddr sock_addr_buffer;
+        addr_len = sizeof(sock_addr_buffer);
+        const struct sockaddr* sock_addr = 
+            getpeername(peer_fd, &sock_addr_buffer, &addr_len) ? NULL : &sock_addr_buffer;
+        if (!sock_addr && !is_server && errno == ENOTCONN) {
+            // There is no need to log anything if connection to server is broken
+            return;
+        }
+        
+        log_timestamp(&now);
+        if (peer_addr) {
+            log_addr(peer_addr);
         } else {
             fprintf(stderr, "sslkeylog: Failed to get peer name for fd %d, errno: %d\n", peer_fd, errno);
-            fputc('?', keylog_file);
+            fputs("?:?", keylog_file);
         }
 
         fputc(' ', keylog_file);
 
-        addr_len = sizeof(addr);
-        if (getsockname(peer_fd, &addr, &addr_len) == 0) {
-            log_addr(&addr);
-        } else if (!is_server && errno == ENOTCONN) {
-            // There is no need to log anything if connection to server is broken
-            return;
+        if (sock_addr) {
+            log_addr(sock_addr);
         } else {
             fprintf(stderr, "sslkeylog: Failed to get socket name for fd %d, errno: %d\n", peer_fd, errno);
-            fputc('?', keylog_file);
+            fputs("?:?", keylog_file);
         }
     } else {
         fprintf(stderr, "sslkeylog: Failed to get fd for SSL, errno: %d\n", errno);
-        fputs("? ?", keylog_file);
+        log_timestamp(&now);
+        fputs("?:? ?:?", keylog_file);
     }
 
     fputc(' ', keylog_file);
