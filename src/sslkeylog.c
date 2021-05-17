@@ -207,7 +207,7 @@ static void keylog_callback(const SSL *ssl, const char *line)
         struct sockaddr sock_addr_buffer;
         addr_len = sizeof(sock_addr_buffer);
         const struct sockaddr* sock_addr = 
-            getpeername(peer_fd, &sock_addr_buffer, &addr_len) ? NULL : &sock_addr_buffer;
+            getsockname(peer_fd, &sock_addr_buffer, &addr_len) ? NULL : &sock_addr_buffer;
         if (!sock_addr && !is_server && errno == ENOTCONN) {
             // There is no need to log anything if connection to server is broken
             return;
