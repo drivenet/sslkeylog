@@ -133,13 +133,21 @@ static void log_addr(const struct sockaddr* addr)
 static void log_timestamp(const struct tm* now)
 {
     fprintf(keylog_file, 
-        "%04u-%02u-%02uT%02u:%02u:%02uZ ", 
+        "%04u-%02u-%02uT%02u:%02u:%02uZ", 
         1900 + now->tm_year, 
         now->tm_mon + 1, 
         now->tm_mday, 
         now->tm_hour, 
         now->tm_min, 
         now->tm_sec);
+}
+
+static inline void fputch(unsigned char c, FILE* stream)
+{
+    unsigned char c1 = c >> 4;
+    fputc(c1 < 10 ? '0' + c1 : 'a' + c1 - 10, stream);
+    unsigned char c2 = c & 0xF;
+    fputc(c2 < 10 ? '0' + c2 : 'a' + c2 - 10, stream);
 }
 
 /* Key extraction via the new OpenSSL 1.1.1 API. */
@@ -168,9 +176,21 @@ static void keylog_callback(const SSL *ssl, const char *line)
     }
 
     line += sizeof(CLIENT_RANDOM) - 1;
+
+
     init_keylog_file(&now);
     if (!keylog_file) {
         return;
+    }
+
+    struct tm session_now;
+    SSL_SESSION *session = SSL_get_session(ssl);
+    if (session) {
+        long session_time = SSL_SESSION_get_time(session);
+        gmtime_r(&session_time, &session_now);
+    } else {
+        fprintf(stderr, "sslkeylog: No session established\n");
+        memcpy(&session_now, &now, sizeof(struct tm));
     }
 
     int peer_fd = SSL_get_fd(ssl);
@@ -194,6 +214,13 @@ static void keylog_callback(const SSL *ssl, const char *line)
         }
         
         log_timestamp(&now);
+
+        fputc(' ', keylog_file);
+
+        log_timestamp(&session_now);
+
+        fputc(' ', keylog_file);
+
         if (peer_addr) {
             log_addr(peer_addr);
         } else {
@@ -212,6 +239,13 @@ static void keylog_callback(const SSL *ssl, const char *line)
     } else {
         fprintf(stderr, "sslkeylog: Failed to get fd for SSL, errno: %d\n", errno);
         log_timestamp(&now);
+
+        fputc(' ', keylog_file);
+
+        log_timestamp(&session_now);
+        
+        fputc(' ', keylog_file);
+
         fputs("?:? ?:?", keylog_file);
     }
 
@@ -220,6 +254,28 @@ static void keylog_callback(const SSL *ssl, const char *line)
     const char* client_name = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
     if (client_name) {
         fputs(client_name, keylog_file);
+    }
+
+    fputc(' ', keylog_file);
+
+    const SSL_CIPHER *cipher = SSL_get_current_cipher(ssl);
+    if (cipher) {
+        fprintf(keylog_file, "%04x", SSL_CIPHER_get_protocol_id(cipher));
+    } else {
+        fprintf(stderr, "sslkeylog: Failed to get current cipher\n");
+        fputc('?', keylog_file);
+    }
+
+    fputc(' ', keylog_file);
+
+    unsigned char server_random[SSL3_RANDOM_SIZE];
+    if (SSL_get_server_random(ssl, server_random, sizeof(server_random)) == sizeof(server_random)) {
+        for (size_t i = 0; i < sizeof(server_random); i++) {
+            fputch(server_random[i], keylog_file);
+        }
+    } else {
+        fprintf(stderr, "sslkeylog: Failed to get SERVER_RANDOM\n");
+        fputc('?', keylog_file);
     }
 
     fputc(' ', keylog_file);
