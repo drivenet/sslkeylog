@@ -145,6 +145,7 @@ static void log_timestamp(const struct tm* now)
 /* Key extraction via the new OpenSSL 1.1.1 API. */
 static void keylog_callback(const SSL *ssl, const char *line)
 {
+    time_t now_time = time(NULL);
     const int is_server = SSL_is_server(ssl);
     const char* is_server_var = getenv("SSLKEYLOGISSERVER");
     if (is_server_var) {        
@@ -159,10 +160,14 @@ static void keylog_callback(const SSL *ssl, const char *line)
         }
     }
 
-    time_t now_time = time(NULL);
     struct tm now;
     gmtime_r(&now_time, &now);
 
+    if (strncmp(CLIENT_RANDOM, line, sizeof(CLIENT_RANDOM) - 1)) {
+        return;
+    }
+
+    line += sizeof(CLIENT_RANDOM) - 1;
     init_keylog_file(&now);
     if (!keylog_file) {
         return;
@@ -219,15 +224,7 @@ static void keylog_callback(const SSL *ssl, const char *line)
 
     fputc(' ', keylog_file);
 
-    if (!strncmp(CLIENT_RANDOM, line, sizeof(CLIENT_RANDOM) - 1)) {
-        line += sizeof(CLIENT_RANDOM) - 1;
-    }
     fputs(line, keylog_file);
-
-    fputc(' ', keylog_file);
-    for (size_t i = 0; i < sizeof(server_random); i++) {
-        fputch(server_random[i], keylog_file);
-    }
 
     fputc('\n', keylog_file);
 }
