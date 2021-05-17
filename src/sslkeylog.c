@@ -183,16 +183,6 @@ static void keylog_callback(const SSL *ssl, const char *line)
         return;
     }
 
-    struct tm session_now;
-    SSL_SESSION *session = SSL_get_session(ssl);
-    if (session) {
-        long session_time = SSL_SESSION_get_time(session);
-        gmtime_r(&session_time, &session_now);
-    } else {
-        fprintf(stderr, "sslkeylog: No session established\n");
-        memcpy(&session_now, &now, sizeof(struct tm));
-    }
-
     int peer_fd = SSL_get_fd(ssl);
     if (peer_fd >= 0) {
         struct sockaddr peer_addr_buffer;
@@ -217,10 +207,6 @@ static void keylog_callback(const SSL *ssl, const char *line)
 
         fputc(' ', keylog_file);
 
-        log_timestamp(&session_now);
-
-        fputc(' ', keylog_file);
-
         if (peer_addr) {
             log_addr(peer_addr);
         } else {
@@ -240,10 +226,6 @@ static void keylog_callback(const SSL *ssl, const char *line)
         fprintf(stderr, "sslkeylog: Failed to get fd for SSL, errno: %d\n", errno);
         log_timestamp(&now);
 
-        fputc(' ', keylog_file);
-
-        log_timestamp(&session_now);
-        
         fputc(' ', keylog_file);
 
         fputs("?:? ?:?", keylog_file);
