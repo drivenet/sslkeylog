@@ -224,14 +224,19 @@ static void keylog_callback(const SSL *ssl, const char *line)
     }
     fputs(line, keylog_file);
 
+    fputc(' ', keylog_file);
+    for (size_t i = 0; i < sizeof(server_random); i++) {
+        fputch(server_random[i], keylog_file);
+    }
+
     fputc('\n', keylog_file);
 }
 
 SSL *SSL_new(SSL_CTX *ctx)
 {
-    static SSL *(*func)();
+    static SSL *(*func)(SSL_CTX *);
     if (!func) {        
-        func = dlsym(RTLD_NEXT, __func__);
+        *(void **)(&func) = dlsym(RTLD_NEXT, __func__);
         if (!func) {
             fprintf(stderr, "sslkeylog: Cannot lookup %s\n", __func__);
             abort();
@@ -244,9 +249,9 @@ SSL *SSL_new(SSL_CTX *ctx)
 
 SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX* ctx)
 {
-    static SSL_CTX *(*func)();
+    static SSL_CTX *(*func)(SSL *, SSL_CTX *);
     if (!func) {        
-        func = dlsym(RTLD_NEXT, __func__);
+        *(void **)(&func) = dlsym(RTLD_NEXT, __func__);
         if (!func) {
             fprintf(stderr, "sslkeylog: Cannot lookup %s\n", __func__);
             abort();

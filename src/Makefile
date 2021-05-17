@@ -14,7 +14,7 @@ else
 endif
 
 $(LIBNAME): sslkeylog.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) sslkeylog.c -shared -o $@ -fPIC -ldl $(LDFLAGS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) sslkeylog.c -Wall -Wpedantic -Wextra -shared -o $@ -fPIC -ldl $(LDFLAGS)
 
 clean:
 	$(RM) $(LIBNAME)
