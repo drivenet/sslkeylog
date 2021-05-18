@@ -1,5 +1,6 @@
 # sslkeylog
 This is a patched version of Peter Lekensteyn's [sslkeylog](https://git.lekensteyn.nl/peter/wireshark-notes/src/) supporting advanced logging, SNI and client/server filtering.
+Take a look at [sslkeylog-processor](https://github.com/drivenet/sslkeylog-processor) to convert/persist logs produced by this utility.
 
 ## Building
 `CFLAGS=-O3 make`
