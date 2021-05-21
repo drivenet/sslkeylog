@@ -76,8 +76,16 @@ static void init_keylog_file(const struct tm* now)
         keylog_file = fopen(filename, "a");
         if (keylog_file) {
             keylog_name = strdup(filename);
-            if (chmod(filename, S_IRUSR | S_IWUSR | S_IRGRP)) {
-                fprintf(stderr, "sslkeylog: Failed to set permissions for file %s, errno: %d\n", filename, errno);
+            struct stat file_stat;
+            if (stat(filename, &file_stat)) {
+                fprintf(stderr, "sslkeylog: Failed to stat file %s, errno: %d\n", filename, errno);
+            } else {
+                const mode_t new_mode = file_stat.st_mode & ~(S_IROTH | S_IWOTH | S_IXOTH);
+                if (new_mode != file_stat.st_mode) {
+                    if (chmod(filename, new_mode)) {
+                        fprintf(stderr, "sslkeylog: Failed to set permissions for file %s, errno: %d\n", filename, errno);
+                    }
+                }
             }
             setlinebuf(keylog_file);
         } else {
