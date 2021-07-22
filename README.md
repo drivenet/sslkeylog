@@ -1,5 +1,5 @@
 # sslkeylog
-This is a patched version of Peter Lekensteyn's [sslkeylog](https://github.com/Lekensteyn/wireshark-notes) supporting advanced logging, SNI and client/server filtering.
+This is a patched version of Peter Lekensteyn's [sslkeylog](https://github.com/Lekensteyn/wireshark-notes/tree/master/src) supporting advanced logging, SNI and client/server filtering.
 Contrary to the original version it requires OpenSSL 1.1.1.
 Take a look at [sslkeylog-processor](https://github.com/drivenet/sslkeylog-processor) to convert/persist logs produced by this utility.
 
