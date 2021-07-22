@@ -12,7 +12,7 @@
  *  cc sslkeylog.c -shared -o libsslkeylog.so -fPIC -ldl
  *  SSLKEYLOGFILE=premaster.txt LD_PRELOAD=./libsslkeylog.so openssl ...
  *
- * Also SSLKEYLOGISSERVER can be set to 0 or 1 to filter client only or 
+ * Also SSLKEYLOGISSERVER can be set to 0 or 1 to filter client-only or 
  * server-only contexts.
  *
  * Usage for macOS:
