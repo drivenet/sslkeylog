@@ -4,7 +4,10 @@ Contrary to the original version it requires OpenSSL 1.1.1.
 Take a look at [sslkeylog-processor](https://github.com/drivenet/sslkeylog-processor) to convert/persist logs produced by this utility.
 
 ## Building
-`CFLAGS=-O3 make`
+```
+cd src
+CFLAGS=-O3 make
+```
 
 ## Installation for nginx
 /lib/systemd/system/nginx.service.d/override.conf:
