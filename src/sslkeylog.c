@@ -243,12 +243,37 @@ static void keylog_callback(const SSL* const ssl, const char* line)
 
     const char* client_name = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
     if (client_name) {
-        fputs(client_name, keylog_file);
+        const size_t length = strlen(client_name);
+        if (length <= 255)
+        {
+            for (size_t i = 0;i < length;++i)
+            {
+                const char ch = client_name[i];
+                if (!(ch == '.' || ch == '-' || ch == '_'
+                    || (ch >= '0' && ch <= '9')
+                    || (ch >= 'A' && ch <= 'Z')
+                    || (ch >= 'a' && ch <= 'z')))
+                {
+                    client_name = NULL;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            client_name = NULL;
+        }
+
+        if (client_name) {
+            fputs(client_name, keylog_file);
+        } else {
+            fputc('?', keylog_file);
+        }
     }
 
     fputc(' ', keylog_file);
 
-    const SSL_CIPHER *cipher = SSL_get_current_cipher(ssl);
+    const SSL_CIPHER* const cipher = SSL_get_current_cipher(ssl);
     if (cipher) {
         fprintf(keylog_file, "%04x", SSL_CIPHER_get_protocol_id(cipher));
     } else {
