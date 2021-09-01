@@ -41,9 +41,9 @@
 static FILE* keylog_file = NULL;
 static const char* keylog_name = NULL;
 
-static void init_keylog_file(const struct tm* now)
+static void init_keylog_file(const struct tm* const now)
 {
-    const char *filename = getenv("SSLKEYLOGFILE");
+    const char* filename = getenv("SSLKEYLOGFILE");
     if (filename) {
         if (strlen(filename) > PATH_MAX - 100) {
             fputs("sslkeylog: The provided log file name is too long\n", stderr);
@@ -103,7 +103,7 @@ static void init_keylog_file(const struct tm* now)
     }
 }
 
-static void log_addr(const struct sockaddr* addr)
+static void log_addr(const struct sockaddr* const addr)
 {
     const char* addr_name;
     unsigned short port;
@@ -138,7 +138,7 @@ static void log_addr(const struct sockaddr* addr)
     }
 }
 
-static void log_timestamp(const struct tm* now)
+static void log_timestamp(const struct tm* const now)
 {
     fprintf(keylog_file, 
         "%04u-%02u-%02uT%02u:%02u:%02uZ", 
@@ -150,7 +150,7 @@ static void log_timestamp(const struct tm* now)
         now->tm_sec);
 }
 
-static inline void fputch(unsigned char c, FILE* stream)
+static inline void fputch(unsigned char c, FILE* const stream)
 {
     unsigned char c1 = c >> 4;
     fputc(c1 < 10 ? '0' + c1 : 'a' + c1 - 10, stream);
@@ -159,11 +159,11 @@ static inline void fputch(unsigned char c, FILE* stream)
 }
 
 /* Key extraction via the new OpenSSL 1.1.1 API. */
-static void keylog_callback(const SSL *ssl, const char *line)
+static void keylog_callback(const SSL* const ssl, const char* line)
 {
     time_t now_time = time(NULL);
     const int is_server = SSL_is_server(ssl);
-    const char* is_server_var = getenv("SSLKEYLOGISSERVER");
+    const char* const is_server_var = getenv("SSLKEYLOGISSERVER");
     if (is_server_var) {        
         if (!strcmp(is_server_var, "1")) {
             if (!is_server) {
@@ -195,7 +195,7 @@ static void keylog_callback(const SSL *ssl, const char *line)
     if (peer_fd >= 0) {
         struct sockaddr peer_addr_buffer;
         socklen_t addr_len = sizeof(peer_addr_buffer);
-        const struct sockaddr* peer_addr = 
+        const struct sockaddr* const peer_addr = 
             getpeername(peer_fd, &peer_addr_buffer, &addr_len) ? NULL : &peer_addr_buffer;
         if (!peer_addr && is_server && errno == ENOTCONN) {
             // There is no need to log anything if connection from client is broken
@@ -204,7 +204,7 @@ static void keylog_callback(const SSL *ssl, const char *line)
 
         struct sockaddr sock_addr_buffer;
         addr_len = sizeof(sock_addr_buffer);
-        const struct sockaddr* sock_addr = 
+        const struct sockaddr* const sock_addr = 
             getsockname(peer_fd, &sock_addr_buffer, &addr_len) ? NULL : &sock_addr_buffer;
         if (!sock_addr && !is_server && errno == ENOTCONN) {
             // There is no need to log anything if connection to server is broken
@@ -275,11 +275,11 @@ static void keylog_callback(const SSL *ssl, const char *line)
     fputc('\n', keylog_file);
 }
 
-SSL *SSL_new(SSL_CTX *ctx)
+SSL* SSL_new(SSL_CTX* const ctx)
 {
-    static SSL *(*func)(SSL_CTX *);
+    static SSL*(*func)(SSL_CTX*);
     if (!func) {        
-        *(void **)(&func) = dlsym(RTLD_NEXT, __func__);
+        *(void**)(&func) = dlsym(RTLD_NEXT, __func__);
         if (!func) {
             fprintf(stderr, "sslkeylog: Cannot lookup %s\n", __func__);
             abort();
@@ -290,11 +290,11 @@ SSL *SSL_new(SSL_CTX *ctx)
     return func(ctx);
 }
 
-SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX* ctx)
+SSL_CTX *SSL_set_SSL_CTX(SSL* const ssl, SSL_CTX* const ctx)
 {
-    static SSL_CTX *(*func)(SSL *, SSL_CTX *);
+    static SSL_CTX*(*func)(SSL*, SSL_CTX*);
     if (!func) {        
-        *(void **)(&func) = dlsym(RTLD_NEXT, __func__);
+        *(void**)(&func) = dlsym(RTLD_NEXT, __func__);
         if (!func) {
             fprintf(stderr, "sslkeylog: Cannot lookup %s\n", __func__);
             abort();
