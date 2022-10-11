@@ -10,21 +10,22 @@ CFLAGS=-O3 make
 ```
 
 ## Installation for nginx
-/lib/systemd/system/nginx.service.d/override.conf:
-```systemd
+`/lib/systemd/system/nginx.service.d/override.conf`:
+```ini
 [Service]
 Environment=LD_PRELOAD=/path/to/libsslkeylog.so
 ```
-nginx.conf:
+
+`nginx.conf`:
 ```text
 env LD_PRELOAD=/path/to/libsslkeylog.so;
 env SSLKEYLOGISSERVER=1;
 env SSLKEYLOGFILE=/tmp/sslkeylog/nginx;
 ```
-Note that `LD_PRELOAD` **must be set in both places** to support both systemd service startup and `SIGUSR2`-induced restart that is used by the nginx binary upgrade script.
+Note that `%LD_PRELOAD%` **must be set in both places** to support both systemd service startup and `SIGUSR2`-induced restart that is used by the nginx binary upgrade script.
 
 ## Log format
-Logs are created each minute, the name is prefixed with SSLKEYLOGFILE, then suffixed with minute-precision timestamp and PID.
+Logs are created each minute, the name is prefixed with `%SSLKEYLOGFILE%`, then suffixed with minute-precision timestamp and PID.
 The log line format is as follows:
 ```text
 <rfc3339_timestamp> <source_ip>:<source_port> <destination_ip>:<destination_port> <sni> <hex_cipher_suite> <server_random> <client_random> <premaster>
