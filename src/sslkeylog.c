@@ -53,13 +53,14 @@ static void init_keylog_file(const struct tm* const now)
         char buffer[PATH_MAX];
         snprintf(buffer,
             sizeof(buffer),
-            "%s-%04u%02u%02u%02u%02u_%u", 
+            "%s-%04u%02u%02u%02u%02u%02u_%u", 
             filename,
             1900 + now->tm_year, 
             now->tm_mon + 1, 
             now->tm_mday, 
             now->tm_hour, 
             now->tm_min,
+            now->tm_sec,
             getpid());
         filename = buffer;
 
