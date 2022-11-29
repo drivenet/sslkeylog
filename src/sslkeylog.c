@@ -5,22 +5,11 @@
  * SNI information. Requires OpenSSL 1.1.1.
  *
  * Copyright (C) 2014 Peter Wu <peter@lekensteyn.nl>
- * Logging expanded and improved by Aristarkh Zagorodnikov <xm@drive.net>
+ * Copyright (C) 2021 Aristarkh Zagorodnikov <xm@drive.net>
  * Licensed under the terms of GPLv3 (or any later version) at your choice.
  *
  * Usage:
- *  cc sslkeylog.c -shared -o libsslkeylog.so -fPIC -ldl
- *  SSLKEYLOGFILE=premaster.txt LD_PRELOAD=./libsslkeylog.so openssl ...
- *
- * Also SSLKEYLOGISSERVER can be set to 0 or 1 to filter client-only or 
- * server-only contexts.
- *
- * Usage for macOS:
- *  cc sslkeylog.c -shared -o libsslkeylog.dylib -fPIC -ldl \
- *      -I/usr/local/opt/openssl@1.1/include \
- *      -L/usr/local/opt/openssl@1.1/lib -lssl
- *  DYLD_INSERT_LIBRARIES=./libsslkeylog.dylib DYLD_FORCE_FLAT_NAMESPACE=1 \
- *      SSLKEYLOGFILE=premaster.txt /usr/local/opt/openssl@1.1/bin/openssl ...
+ *  See ../README.md
  */
 
 #define _GNU_SOURCE /* for RTLD_NEXT */
