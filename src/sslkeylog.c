@@ -162,6 +162,7 @@ static inline void fputch(unsigned char c, FILE* const stream)
 /* Key extraction via the new OpenSSL 1.1.1 API. */
 static void keylog_callback(const SSL* const ssl, const char* line)
 {
+    /* We cannot use session time since it might be a re-established session from the past */
     time_t now_time = time(NULL);
     const int is_server = SSL_is_server(ssl);
     const char* const is_server_var = getenv("SSLKEYLOGISSERVER");
