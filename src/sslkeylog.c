@@ -159,38 +159,13 @@ static inline void fputch(unsigned char c, FILE* const stream)
     fputc(c2 < 10 ? '0' + c2 : 'a' + c2 - 10, stream);
 }
 
-/* Key extraction via the new OpenSSL 1.1.1 API. */
-static void keylog_callback(const SSL* const ssl, const char* line)
-{
-    /* We cannot use session time since it might be a re-established session from the past */
-    time_t now_time = time(NULL);
-    const int is_server = SSL_is_server(ssl);
-    const char* const is_server_var = getenv("SSLKEYLOGISSERVER");
-    if (is_server_var) {        
-        if (!strcmp(is_server_var, "1")) {
-            if (!is_server) {
-                return;
-            }
-        } else if (!strcmp(is_server_var, "0")) {
-            if (is_server) {
-                return;
-            }
-        }
-    }
-
+static int log_init(const time_t now_time, const SSL* const ssl) {
     struct tm now;
     gmtime_r(&now_time, &now);
 
-    if (strncmp(CLIENT_RANDOM, line, sizeof(CLIENT_RANDOM) - 1)) {
-        return;
-    }
-
-    line += sizeof(CLIENT_RANDOM) - 1;
-
-
     init_keylog_file(&now);
     if (!keylog_file) {
-        return;
+        return -1;
     }
 
     int peer_fd = SSL_get_fd(ssl);
@@ -199,18 +174,18 @@ static void keylog_callback(const SSL* const ssl, const char* line)
         socklen_t addr_len = sizeof(peer_addr_buffer);
         const struct sockaddr* const peer_addr = 
             getpeername(peer_fd, &peer_addr_buffer, &addr_len) ? NULL : &peer_addr_buffer;
-        if (!peer_addr && is_server && errno == ENOTCONN) {
+        if (!peer_addr && errno == ENOTCONN && SSL_is_server(ssl)) {
             // There is no need to log anything if connection from client is broken
-            return;
+            return -1;
         }
 
         struct sockaddr sock_addr_buffer;
         addr_len = sizeof(sock_addr_buffer);
         const struct sockaddr* const sock_addr = 
             getsockname(peer_fd, &sock_addr_buffer, &addr_len) ? NULL : &sock_addr_buffer;
-        if (!sock_addr && !is_server && errno == ENOTCONN) {
+        if (!sock_addr && errno == ENOTCONN && !SSL_is_server(ssl)) {
             // There is no need to log anything if connection to server is broken
-            return;
+            return -1;
         }
         
         log_timestamp(&now);
@@ -285,6 +260,10 @@ static void keylog_callback(const SSL* const ssl, const char* line)
 
     fputc(' ', keylog_file);
 
+    return 0;
+}
+
+static void log_tls12_or_less(const SSL* const ssl, const char* const line) {
     unsigned char server_random[SSL3_RANDOM_SIZE];
     if (SSL_get_server_random(ssl, server_random, sizeof(server_random)) == sizeof(server_random)) {
         for (size_t i = 0; i < sizeof(server_random); i++) {
@@ -298,8 +277,39 @@ static void keylog_callback(const SSL* const ssl, const char* line)
     fputc(' ', keylog_file);
 
     fputs(line, keylog_file);
+}
 
+static void log_finish() {
     fputc('\n', keylog_file);
+}
+
+/* Key extraction via the new OpenSSL 1.1.1 API. */
+static void keylog_callback(const SSL* const ssl, const char* const line)
+{
+    /* We cannot use session time since it might be a re-established session from the past */
+    time_t now_time = time(NULL);
+    const int is_server = SSL_is_server(ssl);
+    const char* const is_server_var = getenv("SSLKEYLOGISSERVER");
+    if (is_server_var) {        
+        if (!strcmp(is_server_var, "1")) {
+            if (!is_server) {
+                return;
+            }
+        } else if (!strcmp(is_server_var, "0")) {
+            if (is_server) {
+                return;
+            }
+        }
+    }
+
+    if (!strncmp(CLIENT_RANDOM, line, sizeof(CLIENT_RANDOM) - 1)) {
+        if (log_init(now_time, ssl)) {
+            log_tls12_or_less(ssl, line + sizeof(CLIENT_RANDOM) - 1);
+            log_finish();
+        }
+        
+        return;
+    }
 }
 
 SSL* SSL_new(SSL_CTX* const ctx)
