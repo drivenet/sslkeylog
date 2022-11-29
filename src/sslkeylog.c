@@ -41,8 +41,7 @@
 static FILE* keylog_file = NULL;
 static const char* keylog_name = NULL;
 
-static void init_keylog_file(const struct tm* const now)
-{
+static void init_keylog_file(const struct tm* const now) {
     const char* filename = getenv("SSLKEYLOGFILE");
     if (filename) {
         if (strlen(filename) > PATH_MAX - 100) {
@@ -104,8 +103,7 @@ static void init_keylog_file(const struct tm* const now)
     }
 }
 
-static void log_addr(const struct sockaddr* const addr)
-{
+static void log_addr(const struct sockaddr* const addr) {
     const char* addr_name;
     unsigned short port;
     char buffer[INET6_ADDRSTRLEN];
@@ -139,8 +137,7 @@ static void log_addr(const struct sockaddr* const addr)
     }
 }
 
-static void log_timestamp(const struct tm* const now)
-{
+static void log_timestamp(const struct tm* const now) {
     fprintf(keylog_file, 
         "%04u-%02u-%02uT%02u:%02u:%02uZ", 
         1900 + now->tm_year, 
@@ -151,8 +148,7 @@ static void log_timestamp(const struct tm* const now)
         now->tm_sec);
 }
 
-static inline void fputch(unsigned char c, FILE* const stream)
-{
+static inline void fputch(unsigned char c, FILE* const stream) {
     unsigned char c1 = c >> 4;
     fputc(c1 < 10 ? '0' + c1 : 'a' + c1 - 10, stream);
     unsigned char c2 = c & 0xF;
@@ -284,8 +280,7 @@ static void log_finish() {
 }
 
 /* Key extraction via the new OpenSSL 1.1.1 API. */
-static void keylog_callback(const SSL* const ssl, const char* const line)
-{
+static void keylog_callback(const SSL* const ssl, const char* const line) {
     /* We cannot use session time since it might be a re-established session from the past */
     time_t now_time = time(NULL);
     const int is_server = SSL_is_server(ssl);
@@ -312,8 +307,7 @@ static void keylog_callback(const SSL* const ssl, const char* const line)
     }
 }
 
-SSL* SSL_new(SSL_CTX* const ctx)
-{
+SSL* SSL_new(SSL_CTX* const ctx) {
     static SSL*(*func)(SSL_CTX*);
     if (!func) {        
         *(void**)(&func) = dlsym(RTLD_NEXT, __func__);
@@ -327,8 +321,7 @@ SSL* SSL_new(SSL_CTX* const ctx)
     return func(ctx);
 }
 
-SSL_CTX *SSL_set_SSL_CTX(SSL* const ssl, SSL_CTX* const ctx)
-{
+SSL_CTX *SSL_set_SSL_CTX(SSL* const ssl, SSL_CTX* const ctx) {
     static SSL_CTX*(*func)(SSL*, SSL_CTX*);
     if (!func) {        
         *(void**)(&func) = dlsym(RTLD_NEXT, __func__);
