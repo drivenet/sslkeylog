@@ -352,6 +352,15 @@ static void log_tls13(const time_t now_time, const SSL* const ssl) {
     }
 
     if (!log_init(now_time, ssl)) {
+        fputs(tls13_client_random, keylog_file);
+        fputc(' ', keylog_file);
+        fputs(tls13_client_handshake_traffic_secret, keylog_file);
+        fputc(' ', keylog_file);
+        fputs(tls13_server_handshake_traffic_secret, keylog_file);
+        fputc(' ', keylog_file);
+        fputs(tls13_client_traffic_secret_0, keylog_file);
+        fputc(' ', keylog_file);
+        fputs(tls13_server_traffic_secret_0, keylog_file);
         log_finish();
     }
 
