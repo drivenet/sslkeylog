@@ -31,7 +31,7 @@ The log line format is as follows:
 # TLS pre-1.3
 <rfc3339_timestamp> <source_ip>:<source_port> <destination_ip>:<destination_port> <sni> <hex_cipher_suite> <server_random> <client_random> <premaster>
 # TLS 1.3
-<rfc3339_timestamp> <source_ip>:<source_port> <destination_ip>:<destination_port> <sni> <hex_cipher_suite> <server_random> <client_random> <client_handshake> <server_handshake> <client_0> <server_0>
+<rfc3339_timestamp> <source_ip>:<source_port> <destination_ip>:<destination_port> <sni> <hex_cipher_suite> <server_random> <client_random> <server_handshake> <client_handshake> <server_0> <client_0>
 ```
 The `sni` field can be empty if there was no `ClientHello` exchange. Also source IP+port and destination IP+port may be absent and replaced with `?` if it was impossible to determine the address (for example because the socket was closed).
 The `hex_cipher_suite` uses hexadecimal representation.

@@ -26,19 +26,19 @@
 #include <sys/time.h>
 
 #define CLIENT_RANDOM "CLIENT_RANDOM "
-#define CLIENT_HANDSHAKE_TRAFFIC_SECRET "CLIENT_HANDSHAKE_TRAFFIC_SECRET "
 #define SERVER_HANDSHAKE_TRAFFIC_SECRET "SERVER_HANDSHAKE_TRAFFIC_SECRET "
-#define CLIENT_TRAFFIC_SECRET_0 "CLIENT_TRAFFIC_SECRET_0 "
+#define CLIENT_HANDSHAKE_TRAFFIC_SECRET "CLIENT_HANDSHAKE_TRAFFIC_SECRET "
 #define SERVER_TRAFFIC_SECRET_0 "SERVER_TRAFFIC_SECRET_0 "
+#define CLIENT_TRAFFIC_SECRET_0 "CLIENT_TRAFFIC_SECRET_0 "
 
 static FILE* keylog_file = NULL;
 static const char* keylog_name = NULL;
 
 static char* tls13_client_random = NULL;
-static char* tls13_client_handshake_traffic_secret = NULL;
 static char* tls13_server_handshake_traffic_secret = NULL;
-static char* tls13_client_traffic_secret_0 = NULL;
+static char* tls13_client_handshake_traffic_secret = NULL;
 static char* tls13_server_traffic_secret_0 = NULL;
+static char* tls13_client_traffic_secret_0 = NULL;
 
 static void init_keylog_file(const struct tm* const now) {
     const char* filename = getenv("SSLKEYLOGFILE");
@@ -293,16 +293,6 @@ static void read_tls13_secret(char** secret, const char* const start, const char
 
     if (tls13_client_random) {
         if (strncmp(start, tls13_client_random, 64)) {
-            if (tls13_client_handshake_traffic_secret) {
-                free(tls13_client_handshake_traffic_secret);
-                tls13_client_handshake_traffic_secret = NULL;
-            }
-
-            if (tls13_server_handshake_traffic_secret) {
-                free(tls13_server_handshake_traffic_secret);
-                tls13_server_handshake_traffic_secret = NULL;
-            }
-
             if (tls13_client_traffic_secret_0) {
                 free(tls13_client_traffic_secret_0);
                 tls13_client_traffic_secret_0 = NULL;
@@ -311,6 +301,16 @@ static void read_tls13_secret(char** secret, const char* const start, const char
             if (tls13_server_traffic_secret_0) {
                 free(tls13_server_traffic_secret_0);
                 tls13_server_traffic_secret_0 = NULL;
+            }
+
+            if (tls13_client_handshake_traffic_secret) {
+                free(tls13_client_handshake_traffic_secret);
+                tls13_client_handshake_traffic_secret = NULL;
+            }
+
+            if (tls13_server_handshake_traffic_secret) {
+                free(tls13_server_handshake_traffic_secret);
+                tls13_server_handshake_traffic_secret = NULL;
             }
 
             fprintf(stderr, "sslkeylog: Incomplete secret set for client_random %s\n", tls13_client_random);
@@ -349,10 +349,10 @@ static void log_tls13(const SSL* const ssl) {
         return;
     }
 
-    if (!tls13_client_handshake_traffic_secret
-        || !tls13_server_handshake_traffic_secret
-        || !tls13_client_traffic_secret_0
-        || !tls13_server_traffic_secret_0) {
+    if (!tls13_server_handshake_traffic_secret
+        || !tls13_client_handshake_traffic_secret
+        || !tls13_server_traffic_secret_0
+        || !tls13_client_traffic_secret_0) {
         return;
     }
 
@@ -361,13 +361,13 @@ static void log_tls13(const SSL* const ssl) {
     if (!log_init(now_time, ssl)) {
         fputs(tls13_client_random, keylog_file);
         fputc(' ', keylog_file);
-        fputs(tls13_client_handshake_traffic_secret, keylog_file);
-        fputc(' ', keylog_file);
         fputs(tls13_server_handshake_traffic_secret, keylog_file);
         fputc(' ', keylog_file);
-        fputs(tls13_client_traffic_secret_0, keylog_file);
+        fputs(tls13_client_handshake_traffic_secret, keylog_file);
         fputc(' ', keylog_file);
         fputs(tls13_server_traffic_secret_0, keylog_file);
+        fputc(' ', keylog_file);
+        fputs(tls13_client_traffic_secret_0, keylog_file);
         log_finish();
     }
 
