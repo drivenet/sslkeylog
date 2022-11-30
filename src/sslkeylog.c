@@ -26,9 +26,19 @@
 #include <sys/time.h>
 
 #define CLIENT_RANDOM "CLIENT_RANDOM "
+#define CLIENT_HANDSHAKE_TRAFFIC_SECRET "CLIENT_HANDSHAKE_TRAFFIC_SECRET "
+#define SERVER_HANDSHAKE_TRAFFIC_SECRET "SERVER_HANDSHAKE_TRAFFIC_SECRET "
+#define CLIENT_TRAFFIC_SECRET_0 "CLIENT_TRAFFIC_SECRET_0 "
+#define SERVER_TRAFFIC_SECRET_0 "SERVER_TRAFFIC_SECRET_0 "
 
 static FILE* keylog_file = NULL;
 static const char* keylog_name = NULL;
+
+static char* tls13_client_random = NULL;
+static char* tls13_client_handshake_traffic_secret = NULL;
+static char* tls13_server_handshake_traffic_secret = NULL;
+static char* tls13_client_traffic_secret_0 = NULL;
+static char* tls13_server_traffic_secret_0 = NULL;
 
 static void init_keylog_file(const struct tm* const now) {
     const char* filename = getenv("SSLKEYLOGFILE");
@@ -268,6 +278,95 @@ static void log_finish() {
     fputc('\n', keylog_file);
 }
 
+static void read_tls13_secret(char** secret, const char* const start, const char* const line) {
+    const int secret_length = strlen(start) - (64 + 1);
+    if (secret_length < 64
+        || start[64] != ' ') {
+        fprintf(stderr, "sslkeylog: The keylog line has invalid format: %s\n", line);
+        return;
+    }
+
+    if (tls13_client_random) {
+        if (strncmp(start, tls13_client_random, 64)) {
+            if (tls13_client_handshake_traffic_secret) {
+                free(tls13_client_handshake_traffic_secret);
+                tls13_client_handshake_traffic_secret = NULL; 
+            }
+
+            if (tls13_server_handshake_traffic_secret) {
+                free(tls13_server_handshake_traffic_secret);
+                tls13_server_handshake_traffic_secret = NULL; 
+            }
+
+            if (tls13_client_traffic_secret_0) {
+                free(tls13_client_traffic_secret_0);
+                tls13_client_traffic_secret_0 = NULL; 
+            }
+
+            if (tls13_server_traffic_secret_0) {
+                free(tls13_server_traffic_secret_0);
+                tls13_server_traffic_secret_0 = NULL; 
+            }
+
+            fprintf(stderr, "sslkeylog: Incomplete secret set for client_random %s\n", tls13_client_random);
+            free(tls13_client_random);
+            tls13_client_random = NULL; 
+        }
+    }
+
+    if (!tls13_client_random) {
+        tls13_client_random = malloc(65);
+        if (!tls13_client_random) {
+            fputs("sslkeylog: Failed to allocate memory for TLS 1.3 CLIENT_RANDOM\n", stderr);
+            return;
+        }
+        strncpy(tls13_client_random, start, 64);
+        tls13_client_random[64] = '\0';
+    }
+
+    if (*secret) {
+        fprintf(stderr, "sslkeylog: The keylog line for TLS 1.3 secret is unexpected: %s\n", line);
+        return;
+    }
+
+    *secret = malloc(secret_length + 1);
+    if (!*secret) {
+        fputs("sslkeylog: Failed to allocate memory for TLS 1.3 secret\n", stderr);
+        return;
+    }
+    strncpy(*secret, start + (64 + 1), secret_length);
+    (*secret)[secret_length] = '\0';
+}
+
+static void log_tls13(const time_t now_time, const SSL* const ssl) {
+    if (!tls13_client_random) {
+        fputs("sslkeylog: Unexpectedly missing TLS 1.3 CLIENT_RANDOM\n", stderr);
+        return;
+    }
+
+    if (!tls13_client_handshake_traffic_secret
+        || !tls13_server_handshake_traffic_secret
+        || !tls13_client_traffic_secret_0
+        || !tls13_server_traffic_secret_0) {
+        return;
+    }
+
+    if (!log_init(now_time, ssl)) {
+        log_finish();
+    }
+
+    free(tls13_client_handshake_traffic_secret);
+    tls13_client_handshake_traffic_secret = NULL;
+    free(tls13_server_handshake_traffic_secret);
+    tls13_server_handshake_traffic_secret = NULL;
+    free(tls13_client_traffic_secret_0);
+    tls13_client_traffic_secret_0 = NULL;
+    free(tls13_server_traffic_secret_0);
+    tls13_server_traffic_secret_0 = NULL;
+    free(tls13_client_random);
+    tls13_client_random = NULL;
+}
+
 /* Key extraction via the new OpenSSL 1.1.1 API. */
 static void keylog_callback(const SSL* const ssl, const char* const line) {
     /* We cannot use session time since it might be a re-established session from the past */
@@ -287,11 +386,39 @@ static void keylog_callback(const SSL* const ssl, const char* const line) {
     }
 
     if (!strncmp(CLIENT_RANDOM, line, sizeof(CLIENT_RANDOM) - 1)) {
-        if (log_init(now_time, ssl)) {
+        if (!log_init(now_time, ssl)) {
             log_tls12_or_less(ssl, line + sizeof(CLIENT_RANDOM) - 1);
             log_finish();
         }
         
+        return;
+    }
+
+    if (!strncmp(CLIENT_HANDSHAKE_TRAFFIC_SECRET, line, sizeof(CLIENT_HANDSHAKE_TRAFFIC_SECRET) - 1)) {
+        const char* const start = line + sizeof(CLIENT_HANDSHAKE_TRAFFIC_SECRET) - 1;
+        read_tls13_secret(&tls13_client_handshake_traffic_secret, start, line);
+        log_tls13(now_time, ssl);        
+        return;
+    }
+
+    if (!strncmp(SERVER_HANDSHAKE_TRAFFIC_SECRET, line, sizeof(SERVER_HANDSHAKE_TRAFFIC_SECRET) - 1)) {
+        const char* const start = line + sizeof(SERVER_HANDSHAKE_TRAFFIC_SECRET) - 1;
+        read_tls13_secret(&tls13_server_handshake_traffic_secret, start, line);
+        log_tls13(now_time, ssl);        
+        return;
+    }
+
+    if (!strncmp(CLIENT_TRAFFIC_SECRET_0, line, sizeof(CLIENT_TRAFFIC_SECRET_0) - 1)) {
+        const char* const start = line + sizeof(CLIENT_TRAFFIC_SECRET_0) - 1;
+        read_tls13_secret(&tls13_client_traffic_secret_0, start, line);
+        log_tls13(now_time, ssl);        
+        return;
+    }
+
+    if (!strncmp(SERVER_TRAFFIC_SECRET_0, line, sizeof(SERVER_TRAFFIC_SECRET_0) - 1)) {
+        const char* const start = line + sizeof(SERVER_TRAFFIC_SECRET_0) - 1;
+        read_tls13_secret(&tls13_server_traffic_secret_0, start, line);
+        log_tls13(now_time, ssl);        
         return;
     }
 }
@@ -305,6 +432,7 @@ SSL* SSL_new(SSL_CTX* const ctx) {
             abort();
         }
     }
+
     /* Override any previous key log callback. */
     SSL_CTX_set_keylog_callback(ctx, keylog_callback);
     return func(ctx);
@@ -319,6 +447,7 @@ SSL_CTX *SSL_set_SSL_CTX(SSL* const ssl, SSL_CTX* const ctx) {
             abort();
         }
     }
+
     /* Override any previous key log callback. */
     SSL_CTX_set_keylog_callback(ctx, keylog_callback);
     return func(ssl, ctx);
