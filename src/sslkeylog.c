@@ -255,10 +255,6 @@ static int log_init(const time_t now_time, const SSL* const ssl) {
 
     fputc(' ', keylog_file);
 
-    return 0;
-}
-
-static void log_tls12_or_less(const SSL* const ssl, const char* const line) {
     unsigned char server_random[SSL3_RANDOM_SIZE];
     if (SSL_get_server_random(ssl, server_random, sizeof(server_random)) == sizeof(server_random)) {
         for (size_t i = 0; i < sizeof(server_random); i++) {
@@ -271,11 +267,20 @@ static void log_tls12_or_less(const SSL* const ssl, const char* const line) {
 
     fputc(' ', keylog_file);
 
-    fputs(line, keylog_file);
+    return 0;
 }
 
 static void log_finish() {
     fputc('\n', keylog_file);
+}
+
+static void log_tls12_or_less(const SSL* const ssl, const char* const line) {
+    /* We cannot use session time since it might be a re-established session from the past */
+    const time_t now_time = time(NULL);
+    if (!log_init(now_time, ssl)) {
+        fputs(line, keylog_file);
+        log_finish();
+    }
 }
 
 static void read_tls13_secret(char** secret, const char* const start, const char* const line) {
@@ -338,7 +343,7 @@ static void read_tls13_secret(char** secret, const char* const start, const char
     (*secret)[secret_length] = '\0';
 }
 
-static void log_tls13(const time_t now_time, const SSL* const ssl) {
+static void log_tls13(const SSL* const ssl) {
     if (!tls13_client_random) {
         fputs("sslkeylog: Unexpectedly missing TLS 1.3 CLIENT_RANDOM\n", stderr);
         return;
@@ -351,6 +356,8 @@ static void log_tls13(const time_t now_time, const SSL* const ssl) {
         return;
     }
 
+    /* We cannot use session time since it might be a re-established session from the past */
+    const time_t now_time = time(NULL);
     if (!log_init(now_time, ssl)) {
         fputs(tls13_client_random, keylog_file);
         fputc(' ', keylog_file);
@@ -378,8 +385,6 @@ static void log_tls13(const time_t now_time, const SSL* const ssl) {
 
 /* Key extraction via the new OpenSSL 1.1.1 API. */
 static void keylog_callback(const SSL* const ssl, const char* const line) {
-    /* We cannot use session time since it might be a re-established session from the past */
-    time_t now_time = time(NULL);
     const int is_server = SSL_is_server(ssl);
     const char* const is_server_var = getenv("SSLKEYLOGISSERVER");
     if (is_server_var) {        
@@ -395,39 +400,35 @@ static void keylog_callback(const SSL* const ssl, const char* const line) {
     }
 
     if (!strncmp(CLIENT_RANDOM, line, sizeof(CLIENT_RANDOM) - 1)) {
-        if (!log_init(now_time, ssl)) {
-            log_tls12_or_less(ssl, line + sizeof(CLIENT_RANDOM) - 1);
-            log_finish();
-        }
-        
+        log_tls12_or_less(ssl, line + sizeof(CLIENT_RANDOM) - 1);        
         return;
     }
 
     if (!strncmp(CLIENT_HANDSHAKE_TRAFFIC_SECRET, line, sizeof(CLIENT_HANDSHAKE_TRAFFIC_SECRET) - 1)) {
         const char* const start = line + sizeof(CLIENT_HANDSHAKE_TRAFFIC_SECRET) - 1;
         read_tls13_secret(&tls13_client_handshake_traffic_secret, start, line);
-        log_tls13(now_time, ssl);        
+        log_tls13(ssl);        
         return;
     }
 
     if (!strncmp(SERVER_HANDSHAKE_TRAFFIC_SECRET, line, sizeof(SERVER_HANDSHAKE_TRAFFIC_SECRET) - 1)) {
         const char* const start = line + sizeof(SERVER_HANDSHAKE_TRAFFIC_SECRET) - 1;
         read_tls13_secret(&tls13_server_handshake_traffic_secret, start, line);
-        log_tls13(now_time, ssl);        
+        log_tls13(ssl);        
         return;
     }
 
     if (!strncmp(CLIENT_TRAFFIC_SECRET_0, line, sizeof(CLIENT_TRAFFIC_SECRET_0) - 1)) {
         const char* const start = line + sizeof(CLIENT_TRAFFIC_SECRET_0) - 1;
         read_tls13_secret(&tls13_client_traffic_secret_0, start, line);
-        log_tls13(now_time, ssl);        
+        log_tls13(ssl);        
         return;
     }
 
     if (!strncmp(SERVER_TRAFFIC_SECRET_0, line, sizeof(SERVER_TRAFFIC_SECRET_0) - 1)) {
         const char* const start = line + sizeof(SERVER_TRAFFIC_SECRET_0) - 1;
         read_tls13_secret(&tls13_server_traffic_secret_0, start, line);
-        log_tls13(now_time, ssl);        
+        log_tls13(ssl);        
         return;
     }
 }
