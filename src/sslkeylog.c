@@ -51,12 +51,12 @@ static void init_keylog_file(const struct tm* const now) {
         char buffer[PATH_MAX];
         snprintf(buffer,
             sizeof(buffer),
-            "%s-%04u%02u%02u%02u%02u%02u_%u", 
+            "%s-%04u%02u%02u%02u%02u%02u_%u",
             filename,
-            1900 + now->tm_year, 
-            now->tm_mon + 1, 
-            now->tm_mday, 
-            now->tm_hour, 
+            1900 + now->tm_year,
+            now->tm_mon + 1,
+            now->tm_mday,
+            now->tm_hour,
             now->tm_min,
             now->tm_sec,
             getpid());
@@ -137,13 +137,13 @@ static void log_addr(const struct sockaddr* const addr) {
 }
 
 static void log_timestamp(const struct tm* const now) {
-    fprintf(keylog_file, 
-        "%04u-%02u-%02uT%02u:%02u:%02uZ", 
-        1900 + now->tm_year, 
-        now->tm_mon + 1, 
-        now->tm_mday, 
-        now->tm_hour, 
-        now->tm_min, 
+    fprintf(keylog_file,
+        "%04u-%02u-%02uT%02u:%02u:%02uZ",
+        1900 + now->tm_year,
+        now->tm_mon + 1,
+        now->tm_mday,
+        now->tm_hour,
+        now->tm_min,
         now->tm_sec);
 }
 
@@ -167,7 +167,7 @@ static int log_init(const time_t now_time, const SSL* const ssl) {
     if (peer_fd >= 0) {
         struct sockaddr peer_addr_buffer;
         socklen_t addr_len = sizeof(peer_addr_buffer);
-        const struct sockaddr* const peer_addr = 
+        const struct sockaddr* const peer_addr =
             getpeername(peer_fd, &peer_addr_buffer, &addr_len) ? NULL : &peer_addr_buffer;
         if (!peer_addr && errno == ENOTCONN && SSL_is_server(ssl)) {
             // There is no need to log anything if connection from client is broken
@@ -176,13 +176,13 @@ static int log_init(const time_t now_time, const SSL* const ssl) {
 
         struct sockaddr sock_addr_buffer;
         addr_len = sizeof(sock_addr_buffer);
-        const struct sockaddr* const sock_addr = 
+        const struct sockaddr* const sock_addr =
             getsockname(peer_fd, &sock_addr_buffer, &addr_len) ? NULL : &sock_addr_buffer;
         if (!sock_addr && errno == ENOTCONN && !SSL_is_server(ssl)) {
             // There is no need to log anything if connection to server is broken
             return -1;
         }
-        
+       
         log_timestamp(&now);
 
         fputc(' ', keylog_file);
@@ -295,27 +295,27 @@ static void read_tls13_secret(char** secret, const char* const start, const char
         if (strncmp(start, tls13_client_random, 64)) {
             if (tls13_client_handshake_traffic_secret) {
                 free(tls13_client_handshake_traffic_secret);
-                tls13_client_handshake_traffic_secret = NULL; 
+                tls13_client_handshake_traffic_secret = NULL;
             }
 
             if (tls13_server_handshake_traffic_secret) {
                 free(tls13_server_handshake_traffic_secret);
-                tls13_server_handshake_traffic_secret = NULL; 
+                tls13_server_handshake_traffic_secret = NULL;
             }
 
             if (tls13_client_traffic_secret_0) {
                 free(tls13_client_traffic_secret_0);
-                tls13_client_traffic_secret_0 = NULL; 
+                tls13_client_traffic_secret_0 = NULL;
             }
 
             if (tls13_server_traffic_secret_0) {
                 free(tls13_server_traffic_secret_0);
-                tls13_server_traffic_secret_0 = NULL; 
+                tls13_server_traffic_secret_0 = NULL;
             }
 
             fprintf(stderr, "sslkeylog: Incomplete secret set for client_random %s\n", tls13_client_random);
             free(tls13_client_random);
-            tls13_client_random = NULL; 
+            tls13_client_random = NULL;
         }
     }
 
@@ -387,7 +387,7 @@ static void log_tls13(const SSL* const ssl) {
 static void keylog_callback(const SSL* const ssl, const char* const line) {
     const int is_server = SSL_is_server(ssl);
     const char* const is_server_var = getenv("SSLKEYLOGISSERVER");
-    if (is_server_var) {        
+    if (is_server_var) {       
         if (!strcmp(is_server_var, "1")) {
             if (!is_server) {
                 return;
@@ -400,42 +400,42 @@ static void keylog_callback(const SSL* const ssl, const char* const line) {
     }
 
     if (!strncmp(CLIENT_RANDOM, line, sizeof(CLIENT_RANDOM) - 1)) {
-        log_tls12_or_less(ssl, line + sizeof(CLIENT_RANDOM) - 1);        
+        log_tls12_or_less(ssl, line + sizeof(CLIENT_RANDOM) - 1);       
         return;
     }
 
     if (!strncmp(CLIENT_HANDSHAKE_TRAFFIC_SECRET, line, sizeof(CLIENT_HANDSHAKE_TRAFFIC_SECRET) - 1)) {
         const char* const start = line + sizeof(CLIENT_HANDSHAKE_TRAFFIC_SECRET) - 1;
         read_tls13_secret(&tls13_client_handshake_traffic_secret, start, line);
-        log_tls13(ssl);        
+        log_tls13(ssl);       
         return;
     }
 
     if (!strncmp(SERVER_HANDSHAKE_TRAFFIC_SECRET, line, sizeof(SERVER_HANDSHAKE_TRAFFIC_SECRET) - 1)) {
         const char* const start = line + sizeof(SERVER_HANDSHAKE_TRAFFIC_SECRET) - 1;
         read_tls13_secret(&tls13_server_handshake_traffic_secret, start, line);
-        log_tls13(ssl);        
+        log_tls13(ssl);       
         return;
     }
 
     if (!strncmp(CLIENT_TRAFFIC_SECRET_0, line, sizeof(CLIENT_TRAFFIC_SECRET_0) - 1)) {
         const char* const start = line + sizeof(CLIENT_TRAFFIC_SECRET_0) - 1;
         read_tls13_secret(&tls13_client_traffic_secret_0, start, line);
-        log_tls13(ssl);        
+        log_tls13(ssl);       
         return;
     }
 
     if (!strncmp(SERVER_TRAFFIC_SECRET_0, line, sizeof(SERVER_TRAFFIC_SECRET_0) - 1)) {
         const char* const start = line + sizeof(SERVER_TRAFFIC_SECRET_0) - 1;
         read_tls13_secret(&tls13_server_traffic_secret_0, start, line);
-        log_tls13(ssl);        
+        log_tls13(ssl);       
         return;
     }
 }
 
 SSL* SSL_new(SSL_CTX* const ctx) {
     static SSL*(*func)(SSL_CTX*);
-    if (!func) {        
+    if (!func) {       
         *(void**)(&func) = dlsym(RTLD_NEXT, __func__);
         if (!func) {
             fprintf(stderr, "sslkeylog: Cannot lookup %s\n", __func__);
@@ -450,7 +450,7 @@ SSL* SSL_new(SSL_CTX* const ctx) {
 
 SSL_CTX *SSL_set_SSL_CTX(SSL* const ssl, SSL_CTX* const ctx) {
     static SSL_CTX*(*func)(SSL*, SSL_CTX*);
-    if (!func) {        
+    if (!func) {       
         *(void**)(&func) = dlsym(RTLD_NEXT, __func__);
         if (!func) {
             fprintf(stderr, "sslkeylog: Cannot lookup %s\n", __func__);
